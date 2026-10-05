@@ -1,0 +1,25 @@
+# Archivos de R / proyecto local
+.Rproj.user/
+.Rhistory
+.RData
+.RDataTmp
+.Ruserdata
+
+# Objetos y salidas temporales
+*.Rds
+*.rds
+*.Rdata
+*.RData
+*_cache/
+*_files/
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+
+# Si quieres ignorar también paquetes locales de renv
+.renv/
+renv/library/
+
+# No ignorar el dataset del trabajo si lo quieres versionarlo
+# atenciones_salud_sucio.csv
