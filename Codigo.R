@@ -1420,3 +1420,731 @@ cat("Archivo generado:", archivo_salida, "\n")
 cat("Filas de entrenamiento:", nrow(train), "\n")
 cat("Filas de prueba:", nrow(test), "\n")
 cat("=============================================\n")
+
+# =====================================================================
+# PARTE B: MODELOS
+# REGRESIÓN LINEAL Y REGRESIÓN LOGÍSTICA
+# =====================================================================
+
+
+# =====================================================================
+# 31. PREPARACIÓN DE DATOS PARA REGRESIÓN LINEAL
+# =====================================================================
+
+# La regresión lineal estima el costo de atención.
+# Se usan solamente filas completas para las variables del modelo.
+
+train_lm <- train %>%
+  select(
+    id_fila,
+    costo_atencion,
+    edad,
+    cantidad_consultas,
+    dias_hospitalizacion,
+    diagnostico_principal
+  ) %>%
+  filter(
+    complete.cases(
+      costo_atencion,
+      edad,
+      cantidad_consultas,
+      dias_hospitalizacion,
+      diagnostico_principal
+    )
+  )
+
+
+test_lm <- test %>%
+  select(
+    id_fila,
+    costo_atencion,
+    edad,
+    cantidad_consultas,
+    dias_hospitalizacion,
+    diagnostico_principal
+  ) %>%
+  filter(
+    complete.cases(
+      costo_atencion,
+      edad,
+      cantidad_consultas,
+      dias_hospitalizacion,
+      diagnostico_principal
+    )
+  )
+
+
+# Los diagnósticos de test deben tener los mismos niveles de train
+train_lm$diagnostico_principal <- factor(
+  train_lm$diagnostico_principal
+)
+
+test_lm$diagnostico_principal <- factor(
+  test_lm$diagnostico_principal,
+  levels = levels(train_lm$diagnostico_principal)
+)
+
+
+cat("\n=============================================\n")
+cat("DATOS USADOS EN REGRESIÓN LINEAL\n")
+cat("=============================================\n")
+
+cat("Filas disponibles en train:", nrow(train), "\n")
+cat("Filas utilizadas por el modelo:", nrow(train_lm), "\n")
+cat("Filas disponibles en test:", nrow(test), "\n")
+cat("Filas utilizadas para evaluar:", nrow(test_lm), "\n")
+
+
+# =====================================================================
+# 32. MODELO DE REGRESIÓN LINEAL
+# =====================================================================
+
+modelo_lm <- lm(
+  costo_atencion ~
+    edad +
+    cantidad_consultas +
+    dias_hospitalizacion +
+    diagnostico_principal,
+  data = train_lm
+)
+
+
+# Resultado completo del modelo
+resumen_lm <- summary(modelo_lm)
+
+resumen_lm
+
+
+# =====================================================================
+# 33. TABLA DE COEFICIENTES DEL MODELO LINEAL
+# =====================================================================
+
+tabla_coef_lm <- as.data.frame(
+  resumen_lm$coefficients
+)
+
+tabla_coef_lm$variable <- rownames(tabla_coef_lm)
+
+rownames(tabla_coef_lm) <- NULL
+
+
+# Nombres más sencillos
+names(tabla_coef_lm) <- c(
+  "coeficiente",
+  "error_estandar",
+  "valor_t",
+  "p_valor",
+  "variable"
+)
+
+
+# Orden de las columnas
+tabla_coef_lm <- tabla_coef_lm %>%
+  select(
+    variable,
+    coeficiente,
+    error_estandar,
+    valor_t,
+    p_valor
+  )
+
+
+tabla_coef_lm
+
+
+# Coeficientes que resultaron significativos con p menor que 0,05
+coeficientes_significativos_lm <- tabla_coef_lm %>%
+  filter(p_valor < 0.05)
+
+coeficientes_significativos_lm
+
+
+# =====================================================================
+# 34. MEDIDAS GENERALES DEL MODELO LINEAL
+# =====================================================================
+
+r2_lm <- resumen_lm$r.squared
+
+r2_ajustado_lm <- resumen_lm$adj.r.squared
+
+error_estandar_residual_lm <- resumen_lm$sigma
+
+
+medidas_modelo_lm <- data.frame(
+  medida = c(
+    "R cuadrado",
+    "R cuadrado ajustado",
+    "Error estándar residual"
+  ),
+  
+  valor = c(
+    r2_lm,
+    r2_ajustado_lm,
+    error_estandar_residual_lm
+  )
+)
+
+medidas_modelo_lm
+
+
+# =====================================================================
+# 35. PREDICCIONES DEL MODELO LINEAL
+# =====================================================================
+
+pred_lm <- predict(
+  modelo_lm,
+  newdata = test_lm
+)
+
+
+# Se agregan las predicciones al conjunto de prueba del modelo
+resultados_lm <- test_lm %>%
+  mutate(
+    costo_predicho = as.numeric(pred_lm),
+    error = costo_atencion - costo_predicho,
+    error_absoluto = abs(error),
+    error_cuadrado = error^2
+  )
+
+
+head(resultados_lm)
+
+
+# =====================================================================
+# 36. MAE Y RMSE
+# =====================================================================
+
+# MAE: promedio del error absoluto
+mae_lm <- mean(
+  resultados_lm$error_absoluto
+)
+
+
+# RMSE: raíz del promedio de los errores al cuadrado
+rmse_lm <- sqrt(
+  mean(resultados_lm$error_cuadrado)
+)
+
+
+metricas_lm <- data.frame(
+  metrica = c(
+    "MAE",
+    "RMSE"
+  ),
+  
+  valor = c(
+    mae_lm,
+    rmse_lm
+  )
+)
+
+metricas_lm
+
+
+cat("\n=============================================\n")
+cat("RESULTADOS DE REGRESIÓN LINEAL\n")
+cat("=============================================\n")
+
+cat("R cuadrado:", round(r2_lm, 4), "\n")
+cat(
+  "R cuadrado ajustado:",
+  round(r2_ajustado_lm, 4),
+  "\n"
+)
+cat(
+  "Error estándar residual:",
+  round(error_estandar_residual_lm, 2),
+  "\n"
+)
+cat("MAE:", round(mae_lm, 2), "\n")
+cat("RMSE:", round(rmse_lm, 2), "\n")
+
+
+# =====================================================================
+# 37. GRÁFICOS DEL MODELO LINEAL
+# =====================================================================
+
+# Datos utilizados en los gráficos
+diagnostico_lm <- data.frame(
+  ajustados = fitted(modelo_lm),
+  residuos = residuals(modelo_lm),
+  residuos_estandarizados = rstandard(modelo_lm)
+)
+
+
+# ---------------------------------------------------------------------
+# Gráfico 1: residuos frente a valores ajustados
+# ---------------------------------------------------------------------
+
+grafico_residuos <- ggplot(
+  diagnostico_lm,
+  aes(
+    x = ajustados,
+    y = residuos
+  )
+) +
+  geom_point(
+    alpha = 0.4,
+    colour = "steelblue"
+  ) +
+  geom_hline(
+    yintercept = 0,
+    colour = "red",
+    linetype = "dashed"
+  ) +
+  labs(
+    title = "Residuos frente a valores ajustados",
+    x = "Costo ajustado por el modelo",
+    y = "Residuo"
+  ) +
+  theme_minimal()
+
+print(grafico_residuos)
+
+
+# ---------------------------------------------------------------------
+# Gráfico 2: normalidad de los residuos
+# ---------------------------------------------------------------------
+
+grafico_qq <- ggplot(
+  diagnostico_lm,
+  aes(
+    sample = residuos_estandarizados
+  )
+) +
+  stat_qq(
+    alpha = 0.5,
+    colour = "steelblue"
+  ) +
+  stat_qq_line(
+    colour = "red"
+  ) +
+  labs(
+    title = "Gráfico Q-Q de los residuos",
+    x = "Valores teóricos",
+    y = "Residuos estandarizados"
+  ) +
+  theme_minimal()
+
+print(grafico_qq)
+
+
+# ---------------------------------------------------------------------
+# Gráfico 3: costo real frente a costo predicho
+# ---------------------------------------------------------------------
+
+grafico_real_predicho <- ggplot(
+  resultados_lm,
+  aes(
+    x = costo_atencion,
+    y = costo_predicho
+  )
+) +
+  geom_point(
+    alpha = 0.4,
+    colour = "darkgreen"
+  ) +
+  geom_abline(
+    intercept = 0,
+    slope = 1,
+    colour = "red",
+    linetype = "dashed"
+  ) +
+  labs(
+    title = "Costo real frente a costo predicho",
+    x = "Costo real",
+    y = "Costo predicho"
+  ) +
+  theme_minimal()
+
+print(grafico_real_predicho)
+
+
+# =====================================================================
+# 38. PREPARACIÓN DE DATOS PARA REGRESIÓN LOGÍSTICA
+# =====================================================================
+
+# La regresión logística estima la probabilidad de que una
+# hospitalización sea prolongada.
+#
+# dias_hospitalizacion no se utiliza como predictor porque esa variable
+# se usó para crear hosp_prolongada.
+
+train_log <- train %>%
+  select(
+    id_fila,
+    hosp_prolongada,
+    edad,
+    cantidad_consultas,
+    diagnostico_principal,
+    costo_atencion
+  ) %>%
+  filter(
+    complete.cases(
+      hosp_prolongada,
+      edad,
+      cantidad_consultas,
+      diagnostico_principal,
+      costo_atencion
+    )
+  )
+
+
+test_log <- test %>%
+  select(
+    id_fila,
+    hosp_prolongada,
+    edad,
+    cantidad_consultas,
+    diagnostico_principal,
+    costo_atencion
+  ) %>%
+  filter(
+    complete.cases(
+      hosp_prolongada,
+      edad,
+      cantidad_consultas,
+      diagnostico_principal,
+      costo_atencion
+    )
+  )
+
+
+# Asegura que "No" sea la referencia y "Si" el resultado de interés
+train_log$hosp_prolongada <- factor(
+  train_log$hosp_prolongada,
+  levels = c("No", "Si")
+)
+
+test_log$hosp_prolongada <- factor(
+  test_log$hosp_prolongada,
+  levels = c("No", "Si")
+)
+
+
+# Niveles iguales para diagnóstico en train y test
+train_log$diagnostico_principal <- factor(
+  train_log$diagnostico_principal
+)
+
+test_log$diagnostico_principal <- factor(
+  test_log$diagnostico_principal,
+  levels = levels(train_log$diagnostico_principal)
+)
+
+
+cat("\n=============================================\n")
+cat("DATOS USADOS EN REGRESIÓN LOGÍSTICA\n")
+cat("=============================================\n")
+
+cat("Filas disponibles en train:", nrow(train), "\n")
+cat("Filas utilizadas por el modelo:", nrow(train_log), "\n")
+cat("Filas disponibles en test:", nrow(test), "\n")
+cat("Filas utilizadas para evaluar:", nrow(test_log), "\n")
+
+
+# Distribución de la respuesta en entrenamiento y prueba
+prop.table(
+  table(train_log$hosp_prolongada)
+)
+
+prop.table(
+  table(test_log$hosp_prolongada)
+)
+
+
+# =====================================================================
+# 39. MODELO DE REGRESIÓN LOGÍSTICA
+# =====================================================================
+
+modelo_log <- glm(
+  hosp_prolongada ~
+    edad +
+    cantidad_consultas +
+    diagnostico_principal +
+    costo_atencion,
+  data = train_log,
+  family = binomial
+)
+
+
+# Resultado completo
+resumen_log <- summary(modelo_log)
+
+resumen_log
+
+
+# =====================================================================
+# 40. TABLA DE COEFICIENTES DEL MODELO LOGÍSTICO
+# =====================================================================
+
+tabla_coef_log <- as.data.frame(
+  resumen_log$coefficients
+)
+
+tabla_coef_log$variable <- rownames(tabla_coef_log)
+
+rownames(tabla_coef_log) <- NULL
+
+
+names(tabla_coef_log) <- c(
+  "coeficiente",
+  "error_estandar",
+  "valor_z",
+  "p_valor",
+  "variable"
+)
+
+
+tabla_coef_log <- tabla_coef_log %>%
+  select(
+    variable,
+    coeficiente,
+    error_estandar,
+    valor_z,
+    p_valor
+  )
+
+
+tabla_coef_log
+
+
+# Variables con p menor que 0,05
+coeficientes_significativos_log <- tabla_coef_log %>%
+  filter(p_valor < 0.05)
+
+coeficientes_significativos_log
+
+
+# =====================================================================
+# 41. ODDS RATIOS
+# =====================================================================
+
+# El odds ratio se obtiene aplicando exp() a cada coeficiente.
+# También se calcula un intervalo aproximado del 95 %.
+
+odds_ratios <- tabla_coef_log %>%
+  mutate(
+    odds_ratio = exp(coeficiente),
+    
+    limite_inferior = exp(
+      coeficiente -
+        1.96 * error_estandar
+    ),
+    
+    limite_superior = exp(
+      coeficiente +
+        1.96 * error_estandar
+    )
+  ) %>%
+  select(
+    variable,
+    coeficiente,
+    p_valor,
+    odds_ratio,
+    limite_inferior,
+    limite_superior
+  )
+
+
+odds_ratios
+
+
+# Se muestran los odds ratios sin el intercepto
+odds_ratios_predictores <- odds_ratios %>%
+  filter(variable != "(Intercept)")
+
+odds_ratios_predictores
+
+
+# =====================================================================
+# 42. PROBABILIDADES EN EL CONJUNTO DE PRUEBA
+# =====================================================================
+
+prob_hosp_prolongada <- predict(
+  modelo_log,
+  newdata = test_log,
+  type = "response"
+)
+
+
+# Nombre compatible con el reparto original del grupo
+prob_falla <- prob_hosp_prolongada
+
+
+# Se guardan las probabilidades junto con el resultado real
+resultados_log <- test_log %>%
+  mutate(
+    prob_hosp_prolongada = as.numeric(
+      prob_hosp_prolongada
+    )
+  )
+
+
+head(resultados_log)
+
+
+# Verificación del rango de las probabilidades
+range(
+  resultados_log$prob_hosp_prolongada
+)
+
+
+# Resumen de las probabilidades
+summary(
+  resultados_log$prob_hosp_prolongada
+)
+
+
+# Gráfico de probabilidades
+grafico_probabilidades <- ggplot(
+  resultados_log,
+  aes(
+    x = prob_hosp_prolongada,
+    fill = hosp_prolongada
+  )
+) +
+  geom_histogram(
+    bins = 20,
+    alpha = 0.6,
+    position = "identity"
+  ) +
+  labs(
+    title = "Probabilidades de hospitalización prolongada",
+    x = "Probabilidad estimada",
+    y = "Frecuencia",
+    fill = "Resultado real"
+  ) +
+  theme_minimal()
+
+print(grafico_probabilidades)
+
+
+# =====================================================================
+# 43. ARCHIVO FINAL DE PREDICCIONES
+# =====================================================================
+
+# Se parte desde todo el conjunto test.
+# Las predicciones se unen mediante id_fila para no mezclar registros.
+
+predicciones_lm_exportar <- resultados_lm %>%
+  select(
+    id_fila,
+    costo_real = costo_atencion,
+    costo_predicho
+  )
+
+
+predicciones_log_exportar <- resultados_log %>%
+  select(
+    id_fila,
+    hosp_prolongada_real = hosp_prolongada,
+    prob_hosp_prolongada
+  )
+
+
+predicciones_test <- test %>%
+  select(
+    id_fila
+  ) %>%
+  
+  left_join(
+    predicciones_lm_exportar,
+    by = "id_fila"
+  ) %>%
+  
+  left_join(
+    predicciones_log_exportar,
+    by = "id_fila"
+  ) %>%
+  
+  arrange(id_fila)
+
+
+head(predicciones_test)
+
+
+# Cantidad de predicciones disponibles
+sum(!is.na(predicciones_test$costo_predicho))
+
+sum(
+  !is.na(
+    predicciones_test$prob_hosp_prolongada
+  )
+)
+
+
+# Exportación del archivo
+write.csv(
+  predicciones_test,
+  "predicciones_test.csv",
+  row.names = FALSE,
+  fileEncoding = "UTF-8"
+)
+
+
+# Comprobación del archivo
+file.exists("predicciones_test.csv")
+
+
+# =====================================================================
+# 44. RESUMEN FINAL DE PERSONA B
+# =====================================================================
+
+cat("\n=============================================\n")
+cat("PARTE B FINALIZADA CORRECTAMENTE\n")
+cat("=============================================\n")
+
+cat(
+  "Registros usados en modelo lineal:",
+  nrow(train_lm),
+  "\n"
+)
+
+cat(
+  "Registros usados para probar modelo lineal:",
+  nrow(test_lm),
+  "\n"
+)
+
+cat(
+  "R cuadrado:",
+  round(r2_lm, 4),
+  "\n"
+)
+
+cat(
+  "R cuadrado ajustado:",
+  round(r2_ajustado_lm, 4),
+  "\n"
+)
+
+cat(
+  "MAE:",
+  round(mae_lm, 2),
+  "\n"
+)
+
+cat(
+  "RMSE:",
+  round(rmse_lm, 2),
+  "\n"
+)
+
+cat(
+  "Registros usados en modelo logístico:",
+  nrow(train_log),
+  "\n"
+)
+
+cat(
+  "Registros usados para probar modelo logístico:",
+  nrow(test_log),
+  "\n"
+)
+
+cat(
+  "Archivo generado: predicciones_test.csv\n"
+)
+
+cat("=============================================\n")
