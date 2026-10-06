@@ -2148,3 +2148,133 @@ cat(
 )
 
 cat("=============================================\n")
+
+# =====================================================================
+# 45. EVALUACIÓN DE CLASIFICACIÓN CON UMBRAL ESTÁNDAR (0,50)
+# =====================================================================
+
+# Se define el umbral estándar de clasificación
+umbral_1 <- 0.50
+
+
+# Se asigna la categoría predicha según el umbral
+resultados_log$pred_50 <- factor(
+  ifelse(
+    resultados_log$prob_hosp_prolongada >= umbral_1,
+    "Si",
+    "No"
+  ),
+  levels = c("No", "Si")
+)
+
+
+# Matriz de confusión para el umbral de 0,50
+mat_conf_50 <- table(
+  Real = resultados_log$hosp_prolongada,
+  Predicho = resultados_log$pred_50
+)
+
+cat("\n=============================================\n")
+cat("MATRIZ DE CONFUSIÓN - UMBRAL 0.50\n")
+cat("=============================================\n")
+print(mat_conf_50)
+
+
+# =====================================================================
+# 46. UMBRAL ALTERNATIVO (0,30) PARA AUMENTAR EL RECALL
+# =====================================================================
+
+# Se define un umbral más bajo para capturar más casos positivos
+umbral_2 <- 0.30
+
+
+# Se asigna la categoría predicha con el umbral alternativo
+resultados_log$pred_30 <- factor(
+  ifelse(
+    resultados_log$prob_hosp_prolongada >= umbral_2,
+    "Si",
+    "No"
+  ),
+  levels = c("No", "Si")
+)
+
+
+# Matriz de confusión para el umbral de 0,30
+mat_conf_30 <- table(
+  Real = resultados_log$hosp_prolongada,
+  Predicho = resultados_log$pred_30
+)
+
+cat("\n=============================================\n")
+cat("MATRIZ DE CONFUSIÓN - UMBRAL 0.30\n")
+cat("=============================================\n")
+print(mat_conf_30)
+
+
+# =====================================================================
+# 47. FUNCIÓN PARA CÁLCULO DE MÉTRICAS DE CLASIFICACIÓN
+# =====================================================================
+
+# La función extrae los valores de la matriz de confusión 
+# para calcular Accuracy, Precisión, Recall y F1-Score.
+calcular_metricas <- function(matriz) {
+  
+  TN <- matriz[1, 1]
+  FP <- matriz[1, 2]
+  FN <- matriz[2, 1]
+  TP <- matriz[2, 2]
+  
+  accuracy  <- (TP + TN) / sum(matriz)
+  precision <- TP / (TP + FP)
+  recall    <- TP / (TP + FN)
+  f1_score  <- 2 * (precision * recall) / (precision + recall)
+  
+  return(
+    data.frame(
+      metrica = c(
+        "Accuracy",
+        "Precisión",
+        "Recall (Sensibilidad)",
+        "F1-Score"
+      ),
+      valor = round(
+        c(accuracy, precision, recall, f1_score),
+        4
+      )
+    )
+  )
+}
+
+
+# =====================================================================
+# 48. COMPARACIÓN DE MÉTRICAS ENTRE UMBRALES
+# =====================================================================
+
+# Se obtienen las métricas para ambos escenarios
+metricas_50 <- calcular_metricas(mat_conf_50)
+metricas_30 <- calcular_metricas(mat_conf_30)
+
+
+# Se consolida la tabla comparativa de los umbrales
+comparacion_umbrales <- data.frame(
+  metrica = metricas_50$metrica,
+  umbral_0.50 = metricas_50$valor,
+  umbral_0.30 = metricas_30$valor
+)
+
+cat("\n=============================================\n")
+cat("COMPARACIÓN DE MÉTRICAS ENTRE UMBRALES\n")
+cat("=============================================\n")
+print(comparacion_umbrales)
+
+
+# =====================================================================
+# 49. RESUMEN FINAL DE PERSONA C
+# =====================================================================
+
+cat("\n=============================================\n")
+cat("PARTE C FINALIZADA CORRECTAMENTE\n")
+cat("=============================================\n")
+cat("Evaluación de umbrales y métricas completada.\n")
+cat("=============================================\n")
+
